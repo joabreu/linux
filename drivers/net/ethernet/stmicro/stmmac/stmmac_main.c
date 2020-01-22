@@ -1040,6 +1040,12 @@ static int stmmac_phy_setup(struct stmmac_priv *priv)
 
 	priv->phylink_config.dev = &priv->dev->dev;
 	priv->phylink_config.type = PHYLINK_NETDEV;
+	if (priv->hw->xpcs) {
+		priv->phylink_config.pcs_poll = true;
+		priv->phylink_config.pcs_bus = priv->mii;
+		priv->phylink_config.pcs_addr = PHYLINK_PCS_AUTOADDR;
+		priv->phylink_config.pcs_ops = priv->hw->xpcs;
+	}
 
 	if (!fwnode)
 		fwnode = dev_fwnode(priv->device);
@@ -2687,7 +2693,8 @@ static int stmmac_open(struct net_device *dev)
 	int ret;
 
 	if (priv->hw->pcs != STMMAC_PCS_TBI &&
-	    priv->hw->pcs != STMMAC_PCS_RTBI) {
+	    priv->hw->pcs != STMMAC_PCS_RTBI &&
+	    priv->hw->xpcs == NULL) {
 		ret = stmmac_init_phy(dev);
 		if (ret) {
 			netdev_err(priv->dev,

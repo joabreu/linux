@@ -382,6 +382,14 @@ int stmmac_mdio_register(struct net_device *ndev)
 		max_addr = PHY_MAX_ADDR;
 	}
 
+	if (mdio_bus_data->has_xpcs) {
+		priv->hw->xpcs = mdio_xpcs_get_ops();
+		if (!priv->hw->xpcs) {
+			err = -ENODEV;
+			goto bus_register_fail;
+		}
+	}
+
 	if (mdio_bus_data->needs_reset)
 		new_bus->reset = &stmmac_mdio_reset;
 
@@ -433,6 +441,9 @@ int stmmac_mdio_register(struct net_device *ndev)
 		found = 1;
 	}
 
+	/* XPCS can work withouht a "real" PHY connected */
+	if (priv->hw->xpcs)
+		found = true;
 	if (!found && !mdio_node) {
 		dev_warn(dev, "No PHY found\n");
 		mdiobus_unregister(new_bus);
