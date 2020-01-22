@@ -9,6 +9,7 @@ struct device_node;
 struct ethtool_cmd;
 struct fwnode_handle;
 struct net_device;
+struct phylink_pcs_ops;
 
 enum {
 	MLO_PAUSE_NONE,
@@ -59,16 +60,52 @@ enum phylink_op_type {
 	PHYLINK_DEV,
 };
 
+#define PHYLINK_PCS_AUTOADDR		(-1)
+
 /**
- * struct phylink_config - PHYLINK configuration structure
- * @dev: a pointer to a struct device associated with the MAC
- * @type: operation type of PHYLINK instance
- * @pcs_poll: MAC PCS cannot provide link change interrupt
+ * struct phylink_config - PHYLINK configuration structure.
+ * @dev: a pointer to a struct device associated with the MAC.
+ * @type: operation type of PHYLINK instance.
+ * @pcs_poll: MAC PCS cannot provide link change interrupt.
+ * @pcs_supported: ethtool bitmask containing PCS supported link modes.
+ * @pcs_ops: PCS operations callbacks.
+ * @pcs_bus: MII bus where PCS sits.
+ * @pcs_addr: PCS MII address.
  */
 struct phylink_config {
 	struct device *dev;
 	enum phylink_op_type type;
 	bool pcs_poll;
+	__ETHTOOL_DECLARE_LINK_MODE_MASK(pcs_supported);
+	const struct phylink_pcs_ops *pcs_ops;
+	struct mii_bus *pcs_bus;
+	int pcs_addr;
+};
+
+/**
+ * struct phylink_pcs_ops - PCS operations structure. Optional.
+ * @hw_probe: Probe for a given PCS.
+ * @validate: Validate and update the link configuration.
+ * @get_state: Read the current link state from the hardware.
+ * @config: configure the PCS for the selected mode and state.
+ * @link_down: take the link down.
+ * @link_up: allow the link to come up.
+ */
+struct phylink_pcs_ops {
+	int (*hw_probe)(struct phylink_config *config,
+			phy_interface_t interface,
+			unsigned long *supported);
+	void (*validate)(struct phylink_config *config,
+			 unsigned long *supported,
+			 struct phylink_link_state *state);
+	void (*get_state)(struct phylink_config *config,
+			  struct phylink_link_state *state);
+	void (*config)(struct phylink_config *config, unsigned int mode,
+		       const struct phylink_link_state *state);
+	void (*link_down)(struct phylink_config *config, unsigned int mode,
+			  phy_interface_t interface);
+	void (*link_up)(struct phylink_config *config, unsigned int mode,
+			phy_interface_t interface, int speed);
 };
 
 /**
